@@ -24,10 +24,6 @@ export default function HomePage() {
             <span className="eyebrow">Built for Music Attorneys</span>
             <h1>Royalty case management <span className="accent">without the compliance</span> headaches.</h1>
             <p className="lead">A portal-first platform to manage SoundExchange claims, client authorizations, and recovery reporting — fully separated from referral fees, fully aligned with bar ethics rules.</p>
-            <div className="hero-actions">
-              <a href="#cta" className="btn btn-primary">Request Early Access <span className="arr">→</span></a>
-              <a href="#features" className="btn btn-ghost">See How It Works</a>
-            </div>
             <div className="hero-trust">
               <span>No fee splitting</span>
               <span>No UPL exposure</span>
