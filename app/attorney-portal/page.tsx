@@ -51,6 +51,41 @@ const MOCK_BUNDLE_CASES = [
 
 declare global { interface Window { JSZip: any; } }
 
+type BioResult = 'ok' | 'unsupported' | 'failed';
+
+// Device biometric gate (Windows Hello / Face ID / fingerprint) via the WebAuthn
+// platform authenticator — the same passkey approach used elsewhere in the stack.
+// Returns 'unsupported' when no platform authenticator exists so callers can
+// degrade gracefully; 'failed' when the user cancels or verification errors.
+async function verifyBiometric(): Promise<BioResult> {
+  try {
+    if (typeof window === 'undefined' || !window.PublicKeyCredential || !navigator.credentials?.create) {
+      return 'unsupported';
+    }
+    const isAvail = (window.PublicKeyCredential as any).isUserVerifyingPlatformAuthenticatorAvailable;
+    if (typeof isAvail === 'function') {
+      const ok = await isAvail.call(window.PublicKeyCredential);
+      if (!ok) return 'unsupported';
+    }
+    const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
+    const userId = new Uint8Array(16); crypto.getRandomValues(userId);
+    await navigator.credentials.create({
+      publicKey: {
+        challenge,
+        rp: { name: 'TrapLawPro', id: window.location.hostname },
+        user: { id: userId, name: 'attorney@traplawpro', displayName: 'TrapLawPro Signer' },
+        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+        timeout: 60000,
+        attestation: 'none',
+      },
+    });
+    return 'ok';
+  } catch {
+    return 'failed';
+  }
+}
+
 function loadJSZip(): Promise<any> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') { reject(new Error('no window')); return; }
@@ -194,6 +229,7 @@ export default function AttorneyPortal() {
   const [handshakeJurisdiction, setHandshakeJurisdiction] = useState('georgia');
   const [handshakeResult, setHandshakeResult] = useState<{signingLink: string; verificationId: string} | null>(null);
   const [handshakeSending, setHandshakeSending] = useState(false);
+  const [handshakeError, setHandshakeError] = useState('');
 
   const matter = MATTERS.find(m => m.id === selectedMatter) || MATTERS[0];
 
@@ -222,10 +258,6 @@ export default function AttorneyPortal() {
     ]},
     { label: "Digital Handshake", items: [
       { id: 'digital-handshake', label: 'Digital Handshake', icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" },
-    ]},
-    { label: "Audit & Due Diligence", items: [
-      { id: 'run-due-diligence', label: 'Run Catalog Due Diligence', icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" },
-      { id: 'pre-release-verify', label: 'Pre-Release Split Verification', icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
     ]},
     { label: "Reports & Documents", items: [
       { id: 'generate-court-report', label: 'Court-Ready Report (LOD Part 1)', icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
