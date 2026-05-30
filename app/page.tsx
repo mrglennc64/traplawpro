@@ -257,7 +257,7 @@ export default function HomePage() {
                   <span>Opt in or out at any time</span>
                 </div>
               </div>
-              <a href="#cta" className="btn btn-sage">Learn More <span className="arr">→</span></a>
+              <a href="https://traproyaltiespro.com/how-it-works" target="_blank" rel="noopener noreferrer" className="btn btn-sage">Learn More <span className="arr">→</span></a>
             </div>
           </div>
         </div>
