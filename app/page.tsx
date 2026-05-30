@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import './landing.css';
 import RevealObserver from './RevealObserver';
 import AccessForm from './AccessForm';
+import SiteHeader from './SiteHeader';
+import SiteFooter from './SiteFooter';
 
 export const metadata: Metadata = {
   title: 'TrapLawPro — Legal Operations for Music Royalty Claims',
@@ -9,37 +11,11 @@ export const metadata: Metadata = {
     'A portal-first platform for music attorneys to manage SoundExchange claims, client authorizations, and recovery reporting — flat-rate and ethics-first.',
 };
 
-const BrandLogo = () => (
-  <svg className="logo" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <rect x="19" y="8" width="2" height="26" fill="#0B2E33" />
-    <rect x="12" y="33" width="16" height="2.5" rx="1" fill="#0B2E33" />
-    <rect x="6" y="11" width="28" height="2" rx="1" fill="#0B2E33" />
-    <path d="M6 13 L2 22 L14 22 Z" fill="#1C6E78" />
-    <path d="M34 13 L30 22 L42 22 Z" fill="#1C6E78" transform="translate(-4 0)" />
-    <circle cx="20" cy="12" r="2.5" fill="#0B2E33" />
-  </svg>
-);
-
 export default function HomePage() {
   return (
     <div className="tlp">
       <RevealObserver />
-      {/* HEADER */}
-      <header>
-        <nav>
-          <a className="brand" href="#top">
-            <BrandLogo />
-            <span className="name"><b>Trap</b><i>LawPro</i></span>
-          </a>
-          <div className="nav-links">
-            <a href="/attorney-portal">Platform</a>
-            <a href="#ethics">Ethics</a>
-            <a href="#how">How It Works</a>
-            <a href="#pricing">Pricing</a>
-          </div>
-          <a href="#cta" className="nav-cta">Request Early Access</a>
-        </nav>
-      </header>
+      <SiteHeader />
 
       {/* HERO */}
       <section className="hero" id="top">
@@ -308,56 +284,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* FOOTER */}
-      <footer>
-        <div className="wrap">
-          <div className="fbrand">
-            <a className="brand" href="#top">
-              <svg className="logo" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect x="19" y="8" width="2" height="26" fill="#0B2E33" />
-                <rect x="12" y="33" width="16" height="2.5" rx="1" fill="#0B2E33" />
-                <rect x="6" y="11" width="28" height="2" rx="1" fill="#0B2E33" />
-                <path d="M6 13 L2 22 L14 22 Z" fill="#1C6E78" />
-                <path d="M30 13 L26 22 L38 22 Z" fill="#1C6E78" />
-                <circle cx="20" cy="12" r="2.5" fill="#0B2E33" />
-              </svg>
-              <span className="name"><b>Trap</b><i>LawPro</i></span>
-            </a>
-            <p>Legal operations software for music royalty claims. Built for attorneys. Built around the rules.</p>
-          </div>
-          <div>
-            <h5>Platform</h5>
-            <ul>
-              <li><a href="#features">Auto-Generated Bundles</a></li>
-              <li><a href="#features">Client Portal &amp; E-Sign</a></li>
-              <li><a href="#features">Recovery Tracker</a></li>
-              <li><a href="#features">MOA Reporting</a></li>
-            </ul>
-          </div>
-          <div>
-            <h5>Compliance</h5>
-            <ul>
-              <li><a href="#ethics">Ethics Architecture</a></li>
-              <li><a href="#ethics">IOLTA Reporting</a></li>
-              <li><a href="#ethics">Fee Separation</a></li>
-              <li><a href="#how">How It Works</a></li>
-            </ul>
-          </div>
-          <div>
-            <h5>Company</h5>
-            <ul>
-              <li><a href="#pricing">Pricing</a></li>
-              <li><a href="#cta">Request Access</a></li>
-              <li><a href="/attorney-portal">Attorney Login</a></li>
-              <li><a href="#">Privacy &amp; Data Security</a></li>
-            </ul>
-          </div>
-        </div>
-        <div className="fbottom">
-          <span>© 2026 TrapLawPro — A division of TrapRoyaltiesPro Holdings</span>
-          <span>SOFTWARE PLATFORM · NOT A LAW FIRM</span>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
