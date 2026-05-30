@@ -16,3 +16,6 @@ yarn-error.log*
 Thumbs.db
 *.tsbuildinfo
 next-env.d.ts
+
+# server connection notes — never commit
+vps.txt
