@@ -21,9 +21,6 @@ export default function SiteHeader() {
         </Link>
         <div className="nav-links">
           <Link href="/attorney-portal">Platform</Link>
-          <Link href="/ethics">Ethics</Link>
-          <Link href="/how-it-works">How It Works</Link>
-          <Link href="/pricing">Pricing</Link>
         </div>
         <Link href="/request-access" className="nav-cta">Request Early Access</Link>
       </nav>

@@ -274,6 +274,14 @@ export default function AttorneyPortal() {
 
   const handleHandshakeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!unlocked) { setShowUnlockModal(true); setUnlockError(''); setPasscodeInput(''); return; }
+    setHandshakeError('');
+    // Require a device biometric (Windows Hello / Face ID / fingerprint) before sending.
+    const bio = await verifyBiometric();
+    if (bio === 'failed') {
+      setHandshakeError('Windows Hello / passkey verification was cancelled or failed. Verify your identity to send the handshake.');
+      return;
+    }
     setHandshakeSending(true);
     setHandshakeResult(null);
     try {
@@ -298,6 +306,12 @@ export default function AttorneyPortal() {
       } else { alert('Error: ' + (data.error || 'Unknown error')); }
     } catch (err) { alert('Error connecting to server'); }
     finally { setHandshakeSending(false); }
+  };
+
+  // In demo mode, route gated actions through the passcode modal instead of running them.
+  const requireUnlock = (action: () => void) => () => {
+    if (!unlocked) { setShowUnlockModal(true); setUnlockError(''); setPasscodeInput(''); return; }
+    action();
   };
 
   const PERFECT_SPLIT = [
@@ -520,8 +534,13 @@ export default function AttorneyPortal() {
                       </select>
                     </div>
                     <button type="submit" disabled={handshakeSending} className="w-full py-4 bg-[#1d3557] text-white rounded-lg font-medium hover:bg-[#122947] transition disabled:opacity-60">
-                      {handshakeSending ? 'Sending...' : 'Send Digital Handshake'}
+                      {handshakeSending ? 'Verifying & sending…' : 'Send Digital Handshake'}
                     </button>
+                    <p className="text-xs text-[#555] flex items-center justify-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 text-[#1d3557] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/></svg>
+                      Signing is protected by device biometrics — Windows Hello, Face ID, or fingerprint.
+                    </p>
+                    {handshakeError && <p className="text-sm text-red-600 font-semibold text-center">{handshakeError}</p>}
                   </form>
                   {handshakeResult && (
                     <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl space-y-2">
@@ -764,7 +783,7 @@ export default function AttorneyPortal() {
                   { id:'generate-court-report', icon:"📋", l:"Court-Ready Report", d:"Hash-sealed, QR-verified PDF evidence package" },
                   { id:'digital-handshake', icon:"🤝", l:"Digital Handshake", d:"Verified and documented split agreement" },
                 ].map(a => (
-                  <button key={a.id} onClick={() => setActiveSection(a.id)}
+                  <button key={a.id} onClick={requireUnlock(() => setActiveSection(a.id))}
                     className="flex items-center gap-4 p-5 bg-white border border-black/10 rounded-xl hover:border-[#1d3557]/50 hover:bg-black/5 transition text-left group">
                     <span className="text-3xl">{a.icon}</span>
                     <div>
@@ -849,9 +868,9 @@ export default function AttorneyPortal() {
                   <div className="bg-white border border-black/10 rounded-2xl p-6">
                     <h3 className="text-xs font-black wr-mono uppercase tracking-widest text-[#555] mb-4">Run Full Forensic Scan</h3>
                     {!scanRunning && !scanComplete && (
-                      <button onClick={runScan}
+                      <button onClick={requireUnlock(runScan)}
                         className="w-full py-4 bg-[#1d3557] hover:bg-[#122947] text-white font-black rounded-xl transition text-base">
-                        🔬 Start Forensic Scan — {matter.name}
+                        Start Forensic Scan — {matter.name}
                       </button>
                     )}
                     {scanRunning && (
@@ -863,9 +882,9 @@ export default function AttorneyPortal() {
                     )}
                     {scanComplete && (
                       <div className="space-y-4">
-                        <div className="flex items-center gap-3 p-4 bg-green-900/20 border border-green-500/30 rounded-xl">
-                          <span className="text-green-400 text-xl">✓</span>
-                          <p className="font-bold text-green-300 text-sm">Scan complete — evidence locked and timestamped</p>
+                        <div className="flex items-center gap-3 p-4 bg-green-600 border border-green-700 rounded-xl">
+                          <svg className="w-5 h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/></svg>
+                          <p className="font-bold text-white text-sm">Scan complete — evidence locked and timestamped</p>
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                           <div className="p-3 bg-red-500/20 border border-red-500/20 rounded-xl text-center"><p className="text-2xl font-black text-red-400 wr-mono">{matter.amount}</p><p className="text-xs text-[#555]">Unclaimed</p></div>
@@ -882,27 +901,27 @@ export default function AttorneyPortal() {
                   <div className="bg-white border border-red-500/20 rounded-2xl p-6">
                     <h3 className="text-xs font-black text-red-400 wr-mono uppercase tracking-widest mb-4">War Room Actions</h3>
                     <div className="space-y-3">
-                      <button onClick={() => setActiveSection('run-due-diligence')}
+                      <button onClick={requireUnlock(() => setActiveSection('run-due-diligence'))}
                         className="w-full py-3 bg-[#1d3557]/10 border border-[#1d3557]/30 text-[#1d3557] font-bold rounded-xl hover:bg-[#1d3557]/20 transition text-sm">
                         Full Catalog Due Diligence
                       </button>
-                      <button onClick={() => setActiveSection('generate-court-report')}
+                      <button onClick={requireUnlock(() => setActiveSection('generate-court-report'))}
                         className="w-full py-3 bg-purple-600/20 border border-purple-500/30 text-purple-300 font-bold rounded-xl hover:bg-purple-600/40 transition text-sm">
                         Court-Ready Report (LOD Part 1)
                       </button>
-                      <button onClick={() => setActiveSection('view-cover-letter')}
+                      <button onClick={requireUnlock(() => setActiveSection('view-cover-letter'))}
                         className="w-full py-3 bg-[#1d3557]/10 border border-[#1d3557]/30 text-[#1d3557] font-bold rounded-xl hover:bg-[#1d3557]/20 transition text-sm">
                         Cover Letter
                       </button>
-                      <button onClick={() => setActiveSection('view-schedule-1')}
+                      <button onClick={requireUnlock(() => setActiveSection('view-schedule-1'))}
                         className="w-full py-3 bg-[#f2efe6] border border-black/10 text-[#333] font-bold rounded-xl hover:bg-[#e4e0d4] transition text-sm">
                         Schedule 1
                       </button>
-                      <button onClick={() => setActiveSection('submission-bundle')}
+                      <button onClick={requireUnlock(() => setActiveSection('submission-bundle'))}
                         className="w-full py-3 bg-green-600/10 border border-green-500/20 text-green-700 font-bold rounded-xl hover:bg-green-600/20 transition text-sm">
                         Submission Bundle
                       </button>
-                      <button onClick={() => setActiveSection('filing-instructions')}
+                      <button onClick={requireUnlock(() => setActiveSection('filing-instructions'))}
                         className="w-full py-3 bg-blue-600/10 border border-blue-500/20 text-blue-700 font-bold rounded-xl hover:bg-blue-600/20 transition text-sm">
                         Filing Instructions
                       </button>
