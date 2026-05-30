@@ -327,7 +327,7 @@ export default function AttorneyPortal() {
       <header className="sticky top-0 z-50 bg-white border-b border-black/10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link href="/" className="text-2xl font-bold text-[#1d3557]">TrapRoyalties<span className="text-[#1d3557]">Pro</span></Link>
+            <Link href="/" className="text-2xl font-bold text-[#1d3557]">TrapLaw<span className="text-[#1d3557]">Pro</span></Link>
             <span className="px-3 py-1 bg-[#1d3557]/10 text-[#1d3557] text-sm rounded-full font-medium">Attorney Portal</span>
           </div>
           <div className="flex items-center space-x-4">
