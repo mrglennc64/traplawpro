@@ -46,7 +46,7 @@ export default function SiteFooter() {
         </div>
       </div>
       <div className="fbottom">
-        <span>© 2026 TrapLawPro — A division of TrapRoyaltiesPro Holdings</span>
+        <span>© 2026 TrapLawPro — a Division of Northern Star Systems Holding</span>
         <span>SOFTWARE PLATFORM · NOT A LAW FIRM</span>
       </div>
     </footer>
