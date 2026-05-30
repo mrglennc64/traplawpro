@@ -32,7 +32,6 @@ export default function SiteFooter() {
           <ul>
             <li><Link href="/how-it-works">How It Works</Link></li>
             <li><Link href="/company">Company</Link></li>
-            <li><Link href="/pricing">Pricing</Link></li>
             <li><Link href="/request-access">Request Access</Link></li>
           </ul>
         </div>

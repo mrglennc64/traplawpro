@@ -225,10 +225,7 @@ export default function HomePage() {
                 <span className="tier-tag">Attorney Seat</span>
                 <span className="tname">Solo &amp; Small Firm</span>
               </div>
-              <div className="price">
-                <b>$149</b><span className="per">/ month per attorney</span>
-              </div>
-              <div className="seat">Unlimited active cases · 14-day free trial</div>
+              <div className="seat">Unlimited active cases</div>
               <ul>
                 <li>Secure client portal with e-sign</li>
                 <li>Auto-generated LODs &amp; Schedule 1</li>
@@ -237,8 +234,7 @@ export default function HomePage() {
                 <li>IOLTA-compatible audit log</li>
                 <li>Compliance reports &amp; disbursement records</li>
               </ul>
-              <a href="#cta" className="btn btn-primary">Start 14-Day Free Trial <span className="arr">→</span></a>
-              <div className="fine">NO CREDIT CARD REQUIRED · CANCEL ANYTIME</div>
+              <a href="/request-access" className="btn btn-primary">Contact us <span className="arr">→</span></a>
             </div>
 
             <div className="pricing-side">
