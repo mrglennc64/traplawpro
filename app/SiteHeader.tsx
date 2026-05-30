@@ -19,10 +19,8 @@ export default function SiteHeader() {
           <BrandLogo />
           <span className="name"><b>Trap</b><i>LawPro</i></span>
         </Link>
-        <div className="nav-links">
-          <Link href="/attorney-portal">Platform</Link>
-        </div>
-        <Link href="/request-access" className="nav-cta">Request Early Access</Link>
+        <div className="nav-links"></div>
+        <Link href="/attorney-portal" className="nav-cta">Platform</Link>
       </nav>
     </header>
   );
