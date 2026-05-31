@@ -1,0 +1,119 @@
+// TrapLawPro — Digital Handshake (attorney flow) persistence.
+// Ported from the mrglennc64/digital-handshake reference (attorney half only).
+// PostgreSQL 16 (target backend on VPS 1512328). DATABASE_URL is the connection
+// string; storage of generated PDFs is isolated in lib/pdf/storage.ts so it can
+// move from local disk to MinIO without touching the schema or flow logic.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Law firm / authorized representative submitting claims.
+model Attorney {
+  id        String         @id @default(cuid())
+  name      String // e.g. "Brashawna Lerae Funderburg, Esq."
+  firm      String // e.g. "Funderburg Law"
+  barNumber String? // e.g. "Georgia Bar #279167"
+  email     String?
+  phone     String?
+  address   String?
+  website   String?
+  cases     AttorneyCase[]
+  createdAt DateTime       @default(now())
+}
+
+model AttorneyCase {
+  id             String  @id @default(cuid())
+  caseRef        String  @unique
+  // Unguessable token for the public signer link (/handshake/sign/{signToken}).
+  signToken      String? @unique
+  isrc           String
+  recordingTitle String
+  primaryArtist  String // full credit, e.g. "Kanye West & Lil Pump ft. Adele Givens"
+  performerName  String // claimant common name, e.g. "Kanye West"
+  performerRole  String // e.g. "Featured Performer"
+  share          Float // claimed share %, e.g. 45
+
+  // Richer claimant / asset metadata (for LOD Part 1, Schedule 1, Cover Letter)
+  performerLegalName  String?
+  performerStageName  String?
+  ipiNumbers          String?
+  ipiNote             String?
+  claimBasis          String? // statutory cite, e.g. "17 U.S.C. §114(g)(2)"
+
+  // Royalty Status Review fields
+  rsrReviewDate       DateTime?
+  rsrRegistryResult   String?
+  rsrCommercialStatus String?
+  rsrCredited         String?
+
+  // --- Phase 2 (Artist Dashboard) forward-compat fields ---
+  // Pipeline: handshake_pending -> artist_signed -> attorney_reviewing ->
+  // bundle_generated -> submitted_soundexchange -> processing -> paid
+  status           String  @default("handshake_pending")
+  artistViewEnabled Boolean @default(true)
+  artistEmail      String? // for magic-link case lookup by the signing artist
+
+  attorneyId    String?
+  attorney      Attorney?            @relation(fields: [attorneyId], references: [id])
+  handshakes    AttorneyHandshake[]
+  documents     Document[]
+  notifications ArtistNotification[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+}
+
+model AttorneyHandshake {
+  id              String       @id @default(cuid())
+  caseId          String
+  case            AttorneyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  legalName       String
+  stageName       String?
+  email           String
+  biometricStatus String       @default("pending")
+  signature       String? // signer PNG dataURL
+  userAgent       String? // device fingerprint captured at signing
+  ipAddress       String? // signer IP captured at signing
+  signedAt        DateTime?
+  hashAnchor      String? // SHA-256 anchor of the signed payload
+  payload         String? // canonical JSON string
+  createdAt       DateTime     @default(now())
+}
+
+// Generated documents (PDFs) for a case.
+model Document {
+  id         String       @id @default(cuid())
+  caseId     String
+  case       AttorneyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  // cover_letter | lod_part_1 | schedule_1 | royalty_status_review | ivc | coc_hash
+  type       String
+  storageUrl String
+  hashAnchor String?
+  createdAt  DateTime     @default(now())
+}
+
+// --- Phase 2 (Artist Dashboard) forward-compat tables ---
+
+model ArtistNotification {
+  id        String       @id @default(cuid())
+  caseId    String
+  case      AttorneyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  message   String
+  readAt    DateTime?
+  createdAt DateTime     @default(now())
+}
+
+// Passwordless magic-link sessions for the artist dashboard.
+model ArtistAuthToken {
+  id         String    @id @default(cuid())
+  email      String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+}

@@ -3,10 +3,6 @@
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
-const QRCode = ({ value, size = 120 }: { value: string; size?: number }) => (
-  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`} alt="QR" width={size} height={size} style={{ borderRadius: '0.5rem' }} />
-);
-
 const REAL_MATTERS = [
   { id: 1, name: "Lil Durk — Back in Blood",            amount: "8× Platinum",        estRecovery: "$15K – $50K", status: "Bundle Ready", leakage: "Unregistered", issues: 0, caseRef: "TR-LD-001", isrc: "USAT22007048" },
   { id: 2, name: "J. Cole — The London",                amount: "3× Platinum",        estRecovery: "$10K – $30K", status: "Bundle Ready", leakage: "Unregistered", issues: 0, caseRef: "TR-JC-002", isrc: "USAT21903320" },
@@ -50,41 +46,6 @@ const MOCK_BUNDLE_CASES = [
 ];
 
 declare global { interface Window { JSZip: any; } }
-
-type BioResult = 'ok' | 'unsupported' | 'failed';
-
-// Device biometric gate (Windows Hello / Face ID / fingerprint) via the WebAuthn
-// platform authenticator — the same passkey approach used elsewhere in the stack.
-// Returns 'unsupported' when no platform authenticator exists so callers can
-// degrade gracefully; 'failed' when the user cancels or verification errors.
-async function verifyBiometric(): Promise<BioResult> {
-  try {
-    if (typeof window === 'undefined' || !window.PublicKeyCredential || !navigator.credentials?.create) {
-      return 'unsupported';
-    }
-    const isAvail = (window.PublicKeyCredential as any).isUserVerifyingPlatformAuthenticatorAvailable;
-    if (typeof isAvail === 'function') {
-      const ok = await isAvail.call(window.PublicKeyCredential);
-      if (!ok) return 'unsupported';
-    }
-    const challenge = new Uint8Array(32); crypto.getRandomValues(challenge);
-    const userId = new Uint8Array(16); crypto.getRandomValues(userId);
-    await navigator.credentials.create({
-      publicKey: {
-        challenge,
-        rp: { name: 'TrapLawPro', id: window.location.hostname },
-        user: { id: userId, name: 'attorney@traplawpro', displayName: 'TrapLawPro Signer' },
-        pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
-        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
-        timeout: 60000,
-        attestation: 'none',
-      },
-    });
-    return 'ok';
-  } catch {
-    return 'failed';
-  }
-}
 
 function loadJSZip(): Promise<any> {
   return new Promise((resolve, reject) => {
@@ -218,19 +179,6 @@ export default function AttorneyPortal() {
   const [splitVerifyId, setSplitVerifyId] = useState<string>('');
   const [splitTimestamp, setSplitTimestamp] = useState<string>('');
   const [splitPayAmount, setSplitPayAmount] = useState<number>(50000);
-  const [handshakeTrack, setHandshakeTrack] = useState('');
-  const [handshakeEmail, setHandshakeEmail] = useState('');
-  const [handshakePercentage, setHandshakePercentage] = useState('');
-  const [handshakeName, setHandshakeName] = useState('');
-  const [handshakeRole, setHandshakeRole] = useState('artist');
-  const [handshakeISRC, setHandshakeISRC] = useState('');
-  const [handshakeRightsType, setHandshakeRightsType] = useState('all-in');
-  const [handshakeRevenueBasis, setHandshakeRevenueBasis] = useState('net');
-  const [handshakeJurisdiction, setHandshakeJurisdiction] = useState('georgia');
-  const [handshakeResult, setHandshakeResult] = useState<{signingLink: string; verificationId: string} | null>(null);
-  const [handshakeSending, setHandshakeSending] = useState(false);
-  const [handshakeError, setHandshakeError] = useState('');
-
   const matter = MATTERS.find(m => m.id === selectedMatter) || MATTERS[0];
 
   const runScan = () => {
@@ -271,42 +219,6 @@ export default function AttorneyPortal() {
       { id: 'secure-message', label: 'Secure Client Message', icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", badge: "2" },
     ]},
   ];
-
-  const handleHandshakeSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!unlocked) { setShowUnlockModal(true); setUnlockError(''); setPasscodeInput(''); return; }
-    setHandshakeError('');
-    // Require a device biometric (Windows Hello / Face ID / fingerprint) before sending.
-    const bio = await verifyBiometric();
-    if (bio === 'failed') {
-      setHandshakeError('Windows Hello / passkey verification was cancelled or failed. Verify your identity to send the handshake.');
-      return;
-    }
-    setHandshakeSending(true);
-    setHandshakeResult(null);
-    try {
-      const response = await fetch('/api/create-handshake', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          track_name: handshakeTrack,
-          isrc: handshakeISRC,
-          rights_type: handshakeRightsType,
-          revenue_basis: handshakeRevenueBasis,
-          jurisdiction: handshakeJurisdiction,
-          created_by: 'glenn.carter@cartersconsultants.com',
-          created_by_name: 'Glenn Carter-CCA',
-          participants: [{ name: handshakeName || 'Collaborator', email: handshakeEmail, percentage: parseInt(handshakePercentage), role: handshakeRole }]
-        })
-      });
-      const data = await response.json();
-      if (data.success) {
-        setHandshakeResult({ signingLink: data.signingLink, verificationId: data.verificationId });
-        setHandshakeTrack(''); setHandshakeEmail(''); setHandshakePercentage(''); setHandshakeName('');
-      } else { alert('Error: ' + (data.error || 'Unknown error')); }
-    } catch (err) { alert('Error connecting to server'); }
-    finally { setHandshakeSending(false); }
-  };
 
   // In demo mode, route gated actions through the passcode modal instead of running them.
   const requireUnlock = (action: () => void) => () => {
@@ -477,117 +389,28 @@ export default function AttorneyPortal() {
           {activeSection === 'digital-handshake' && (
             <div>
               <h1 className="text-3xl font-bold text-[#111] mb-2">Digital Handshake</h1>
-              <p className="text-[#555] mb-6">Create court-admissible royalty split agreements - Georgia Law compliant</p>
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="bg-white border border-black/10 rounded-xl p-8">
-                  <h3 className="text-xl font-bold mb-6 text-[#111]">Create New Split Agreement</h3>
-                  <form onSubmit={handleHandshakeSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-semibold text-[#333] mb-1">Track / Project Name</label>
-                      <input type="text" value={handshakeTrack} onChange={e => setHandshakeTrack(e.target.value)} placeholder="e.g. Neon Dreams (Rough Mix v3)" className="w-full px-4 py-3 bg-white border border-black/10 rounded-lg text-[#111] placeholder-[#999] focus:outline-none focus:ring-2 focus:ring-[#1d3557]" required />
+              <p className="text-[#555] mb-6">Collect legally valid, biometrically-verified artist authorization — court-admissible and SoundExchange-ready.</p>
+              <div className="max-w-3xl">
+                <div className="bg-white border border-black/10 rounded-2xl p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-xl bg-[#1d3557]/10 text-[#1d3557] flex items-center justify-center flex-shrink-0">
+                      <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#333] mb-1">ISRC / ISWC (optional)</label>
-                      <input type="text" value={handshakeISRC} onChange={e => setHandshakeISRC(e.target.value)} placeholder="e.g. USUM72212345" className="w-full px-4 py-3 bg-white border border-black/10 rounded-lg text-[#111] placeholder-[#999] focus:outline-none focus:ring-2 focus:ring-[#1d3557]" />
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-[#111] mb-1">Open the Digital Handshake workspace</h3>
+                      <p className="text-sm text-[#555] mb-4">Start a case, send the artist a one-tap signing link, and watch identity → biometric → signature complete. The signed Cover Letter, LOD Part 1, Schedule 1, Royalty Status Review, Identity Verification Certificate, and Chain-of-Custody hash generate automatically.</p>
+                      <ul className="text-xs text-[#555] space-y-1 mb-5">
+                        <li>✓ Device biometrics (Windows Hello / Face ID / fingerprint)</li>
+                        <li>✓ Tamper-evident SHA-256 verification seal</li>
+                        <li>✓ Device fingerprint + timestamp captured in the chain of custody</li>
+                      </ul>
+                      <button
+                        onClick={requireUnlock(() => { window.location.href = '/attorney-portal/handshake'; })}
+                        className="inline-flex items-center gap-2 px-5 py-3 bg-[#1d3557] text-white rounded-lg font-medium hover:bg-[#122947] transition">
+                        Open Digital Handshake
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#333] mb-1">Rights Type</label>
-                      <select value={handshakeRightsType} onChange={e => setHandshakeRightsType(e.target.value)} className="w-full px-4 py-3 bg-[#f2efe6] border border-black/10 rounded-lg text-[#111] focus:outline-none focus:ring-2 focus:ring-[#1d3557]">
-                        <option value="all-in">All-In (Master + Publishing)</option>
-                        <option value="master">Master Only (Sound Recording)</option>
-                        <option value="publishing">Publishing Only (Composition)</option>
-                        <option value="mechanical">Mechanicals Only</option>
-                        <option value="sync">Sync Only</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#333] mb-1">Revenue Basis</label>
-                      <select value={handshakeRevenueBasis} onChange={e => setHandshakeRevenueBasis(e.target.value)} className="w-full px-4 py-3 bg-[#f2efe6] border border-black/10 rounded-lg text-[#111] focus:outline-none focus:ring-2 focus:ring-[#1d3557]">
-                        <option value="net">Net Receipts</option>
-                        <option value="gross">Gross Receipts</option>
-                        <option value="nps">Net Publisher Share</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-[#333] mb-1">Jurisdiction</label>
-                      <select value={handshakeJurisdiction} onChange={e => setHandshakeJurisdiction(e.target.value)} className="w-full px-4 py-3 bg-[#f2efe6] border border-black/10 rounded-lg text-[#111] focus:outline-none focus:ring-2 focus:ring-[#1d3557]">
-                        <option value="georgia">Georgia Law (Atlanta)</option>
-                        <option value="california">California Law (LA)</option>
-                        <option value="new-york">New York Law</option>
-                        <option value="tennessee">Tennessee Law (Nashville)</option>
-                      </select>
-                    </div>
-                    <div className="border-t pt-4">
-                      <label className="block text-sm font-semibold text-[#333] mb-3">Collaborator Details</label>
-                      <div className="grid grid-cols-3 gap-2 mb-2">
-                        <input type="text" placeholder="Name" value={handshakeName} onChange={e => setHandshakeName(e.target.value)} className="px-3 py-2 bg-white border border-black/10 rounded-lg text-[#111] placeholder-[#999] text-sm focus:outline-none focus:ring-2 focus:ring-[#1d3557]" />
-                        <input type="email" placeholder="Email" value={handshakeEmail} onChange={e => setHandshakeEmail(e.target.value)} className="px-3 py-2 bg-white border border-black/10 rounded-lg text-[#111] placeholder-[#999] text-sm focus:outline-none focus:ring-2 focus:ring-[#1d3557]" required />
-                        <input type="number" placeholder="%" value={handshakePercentage} onChange={e => setHandshakePercentage(e.target.value)} className="px-3 py-2 bg-white border border-black/10 rounded-lg text-[#111] placeholder-[#999] text-sm focus:outline-none focus:ring-2 focus:ring-[#1d3557]" required />
-                      </div>
-                      <select value={handshakeRole} onChange={e => setHandshakeRole(e.target.value)} className="w-full px-3 py-2 bg-white border border-black/10 rounded-lg text-[#111] text-sm focus:outline-none focus:ring-2 focus:ring-[#1d3557]">
-                        <option value="artist">Artist</option>
-                        <option value="producer">Producer</option>
-                        <option value="co-writer">Co-Writer</option>
-                        <option value="featuring">Featuring Artist</option>
-                        <option value="publisher">Publisher</option>
-                        <option value="sample-clearance">Sample Clearance</option>
-                      </select>
-                    </div>
-                    <button type="submit" disabled={handshakeSending} className="w-full py-4 bg-[#1d3557] text-white rounded-lg font-medium hover:bg-[#122947] transition disabled:opacity-60">
-                      {handshakeSending ? 'Verifying & sending…' : 'Send Digital Handshake'}
-                    </button>
-                    <p className="text-xs text-[#555] flex items-center justify-center gap-1.5">
-                      <svg className="w-3.5 h-3.5 text-[#1d3557] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/></svg>
-                      Signing is protected by device biometrics — Windows Hello, Face ID, or fingerprint.
-                    </p>
-                    {handshakeError && <p className="text-sm text-red-600 font-semibold text-center">{handshakeError}</p>}
-                  </form>
-                  {handshakeResult && (
-                    <div className="mt-4 p-4 bg-green-500/10 border border-green-500/30 rounded-xl space-y-2">
-                      <p className="text-green-400 font-semibold text-sm">✓ Handshake created — share this signing link:</p>
-                      <div className="flex items-center gap-2">
-                        <input readOnly value={handshakeResult.signingLink} className="flex-1 px-3 py-2 bg-[#f2efe6] border border-black/15 rounded-lg text-xs text-[#333] font-mono focus:outline-none" />
-                        <button onClick={() => navigator.clipboard.writeText(handshakeResult!.signingLink)} className="px-3 py-2 bg-[#1d3557] text-white text-xs rounded-lg hover:bg-[#122947]">Copy</button>
-                      </div>
-                      <p className="text-xs text-[#555]">ID: {handshakeResult.verificationId}</p>
-                    </div>
-                  )}
-                </div>
-                <div className="bg-[#f2efe6] rounded-xl p-6 border border-black/10">
-                  <h3 className="text-lg font-bold mb-4 text-[#111]">Agreement Preview</h3>
-                  <div className="bg-white border border-[#1d3557]/30 rounded-xl p-6 space-y-4">
-                    <div className="flex justify-between items-center border-b pb-3">
-                      <span className="font-bold text-[#111] text-lg">{handshakeTrack || 'Track Name'}</span>
-                      <span className="px-2 py-1 bg-[#1d3557]/10 text-[#1d3557] text-xs rounded-full font-bold">PENDING</span>
-                    </div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between"><span className="text-[#555]">Rights Type</span><span className="font-medium text-[#111]">{handshakeRightsType}</span></div>
-                      <div className="flex justify-between"><span className="text-[#555]">Revenue Basis</span><span className="font-medium text-[#111]">{handshakeRevenueBasis}</span></div>
-                      <div className="flex justify-between"><span className="text-[#555]">Jurisdiction</span><span className="font-medium text-[#111]">{handshakeJurisdiction}</span></div>
-                      {handshakeISRC && <div className="flex justify-between"><span className="text-[#555]">ISRC</span><span className="font-mono text-xs text-[#111]">{handshakeISRC}</span></div>}
-                    </div>
-                    {handshakeName && (
-                      <div className="border-t pt-3">
-                        <p className="text-xs font-semibold text-[#555] mb-2">COLLABORATOR</p>
-                        <div className="flex justify-between items-center p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
-                          <div>
-                            <span className="text-sm font-medium text-[#111]">{handshakeName}</span>
-                            <span className="text-xs text-[#555] ml-2">({handshakeRole})</span>
-                          </div>
-                          <span className="text-sm font-bold text-yellow-400">{handshakePercentage || 0}% - PENDING</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                    <p className="text-xs font-bold text-amber-800 mb-1">Georgia Court Requirements:</p>
-                    <ul className="text-xs text-amber-700 space-y-1">
-                      <li>&#10003; Rights type defined</li>
-                      <li>&#10003; Revenue basis specified</li>
-                      <li>&#10003; Jurisdiction locked</li>
-                      <li>&#10003; Timestamp + IP metadata attached</li>
-                      <li>&#10003; Verification seal on execution</li>
-                    </ul>
                   </div>
                 </div>
               </div>
