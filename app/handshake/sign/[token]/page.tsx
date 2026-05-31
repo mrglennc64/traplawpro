@@ -279,6 +279,10 @@ export default function SignerPage({ params }: { params: { token: string } }) {
               <code className="text-[10px] text-[#333] break-all">{hash}</code>
             </div>
           )}
+          <a href={`/artist/cases/${params.token}`}
+            className="inline-block w-full py-3 bg-[#1d3557] text-white rounded-lg font-medium hover:bg-[#122947] transition">
+            View Case Status
+          </a>
         </div>
       )}
     </Frame>
