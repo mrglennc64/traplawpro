@@ -22,3 +22,6 @@ vps.txt
 
 # local backup archives
 *.tar.gz
+
+# lockfile not tracked — deploys use npm install, box keeps its own
+package-lock.json
