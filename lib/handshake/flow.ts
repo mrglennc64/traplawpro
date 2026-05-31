@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "../db";
+import { sendMail } from "../mailer";
 import { buildAttorneyPayload, computeHash, stableStringify } from "./hash";
 import {
   renderCoverLetter,
@@ -217,4 +218,39 @@ export async function finalizeCaseHandshake(caseRef: string) {
   });
 
   return { status: "complete" as const, hash: anchor, documents };
+}
+
+/**
+ * Best-effort notification after an artist signs: record an artist-facing
+ * timeline entry and email the attorney. Never throws (email is non-critical;
+ * delivery only works once a Resend domain is verified — see lib/mailer).
+ */
+export async function notifyOnSigned(caseRef: string) {
+  try {
+    const c = await prisma.attorneyCase.findUnique({
+      where: { caseRef },
+      include: { attorney: true, handshakes: { orderBy: { createdAt: "desc" }, take: 1 } },
+    });
+    if (!c) return;
+    const signer = c.handshakes[0];
+
+    await prisma.artistNotification.create({
+      data: {
+        caseId: c.id,
+        message: "Your authorization is signed and sealed. Your attorney has been notified and your document bundle is ready.",
+      },
+    });
+
+    if (c.attorney?.email) {
+      const base = process.env.NEXT_PUBLIC_BASE_URL || "https://traplawpro.com";
+      await sendMail({
+        to: c.attorney.email,
+        subject: `Handshake complete — ${c.caseRef} (${c.recordingTitle})`,
+        html: `<p>${signer?.legalName ?? "The artist"} has completed the Digital Handshake for <strong>${c.caseRef} — ${c.recordingTitle}</strong> (ISRC ${c.isrc}).</p><p>The authorization is sealed (SHA-256 ${signer?.hashAnchor ?? "—"}) and the document bundle has been generated. Open the case in your <a href="${base}/attorney-portal/handshake">attorney portal</a>.</p>`,
+        text: `${signer?.legalName ?? "The artist"} completed the Digital Handshake for ${c.caseRef} — ${c.recordingTitle}. The bundle is ready in your attorney portal.`,
+      });
+    }
+  } catch (e) {
+    console.error("[notifyOnSigned]", e);
+  }
 }

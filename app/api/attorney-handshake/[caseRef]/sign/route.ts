@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { signAuthorization, finalizeCaseHandshake } from "@/lib/handshake/flow";
+import { signAuthorization, finalizeCaseHandshake, notifyOnSigned } from "@/lib/handshake/flow";
 
 export const runtime = "nodejs";
 
@@ -37,8 +37,9 @@ export async function POST(
     try {
       const finalized = await finalizeCaseHandshake(params.caseRef);
       documents = finalized.documents;
+      await notifyOnSigned(params.caseRef);
     } catch (e) {
-      console.error("[attorney-handshake/sign] auto-finalize failed", e);
+      console.error("[attorney-handshake/sign] auto-finalize/notify failed", e);
     }
 
     return NextResponse.json({ success: true, ...result, documents });
