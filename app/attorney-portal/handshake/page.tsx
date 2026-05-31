@@ -78,8 +78,12 @@ function HandshakeInner() {
     artistEmail: "",
   });
   const [creating, setCreating] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState("");
   const [activeCase, setActiveCase] = useState<CaseData | null>(null);
+  const [caseList, setCaseList] = useState<
+    { caseRef: string; recordingTitle: string; status: string; docCount: number; signed: boolean }[]
+  >([]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -111,6 +115,38 @@ function HandshakeInner() {
     }
   };
 
+  const loadList = async () => {
+    const res = await fetch("/api/attorney-handshake");
+    if (res.ok) {
+      const data = await res.json();
+      setCaseList(data.cases || []);
+    }
+  };
+
+  // Load all existing cases once unlocked, so the attorney can reopen any case
+  // (and its generated bundle) after the artist signs. Poll so a freshly-signed
+  // case appears in the list without a manual refresh.
+  useEffect(() => {
+    if (!unlocked) return;
+    loadList();
+    const t = setInterval(loadList, 10000);
+    return () => clearInterval(t);
+  }, [unlocked]);
+
+  // Regenerate the document bundle for the open case (auto-generation already
+  // runs on signing; this is for re-runs after edits).
+  const regenerate = async () => {
+    if (!activeCase) return;
+    setRegenerating(true);
+    try {
+      await fetch(`/api/attorney-handshake/${encodeURIComponent(activeCase.caseRef)}/finalize`, { method: "POST" });
+      await loadCase(activeCase.caseRef);
+      await loadList();
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   // Poll the active case so the attorney sees the moment the artist signs.
   useEffect(() => {
     if (!activeCase?.caseRef) return;
@@ -139,6 +175,7 @@ function HandshakeInner() {
         return;
       }
       await loadCase(form.caseRef);
+      await loadList();
     } catch {
       setError("Network error — try again.");
     } finally {
@@ -165,6 +202,30 @@ function HandshakeInner() {
 
   return (
     <Shell>
+      {caseList.length > 0 && (
+        <div className="mb-8 bg-white border border-black/10 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-[#111]">Your cases</h3>
+            <button onClick={loadList} className="text-xs text-[#1d3557] font-semibold hover:underline">Refresh</button>
+          </div>
+          <div className="space-y-2">
+            {caseList.map((c) => (
+              <button key={c.caseRef} onClick={() => loadCase(c.caseRef)}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border text-left transition ${activeCase?.caseRef === c.caseRef ? "border-[#1d3557] bg-[#1d3557]/5" : "border-black/10 bg-[#f2efe6] hover:bg-[#ebe7da]"}`}>
+                <span className="truncate">
+                  <span className="text-xs text-[#555] mr-2">{c.caseRef}</span>
+                  <span className="text-sm font-medium text-[#111]">{c.recordingTitle}</span>
+                </span>
+                <span className="flex items-center gap-3 flex-shrink-0">
+                  {c.docCount > 0 && <span className="text-xs text-[#1d3557] font-semibold">{c.docCount} docs</span>}
+                  <span className="px-2 py-1 rounded-full text-xs font-bold bg-[#1d3557]/10 text-[#1d3557]">{STATUS_STEPS[statusIndex(c.status)].label}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-[#555] mt-3">Click a case to view its status and download the generated bundle.</p>
+        </div>
+      )}
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Create case */}
         <div className="bg-white border border-black/10 rounded-xl p-8">
@@ -277,20 +338,32 @@ function HandshakeInner() {
                 </ol>
               </div>
 
-              {/* Documents */}
-              {activeCase.documents.length > 0 && (
+              {/* Submission bundle */}
+              {(activeCase.documents.length > 0 || activeCase.handshakes[0]?.hashAnchor) && (
                 <div className="bg-white border border-black/10 rounded-xl p-6">
-                  <p className="text-sm font-bold text-[#111] mb-3">Submission Bundle</p>
-                  <div className="space-y-2">
-                    {activeCase.documents.map((d) => (
-                      <a key={d.id} href={d.storageUrl} target="_blank" rel="noreferrer"
-                        className="flex items-center justify-between px-4 py-3 bg-[#f2efe6] border border-black/10 rounded-lg hover:bg-[#ebe7da] transition">
-                        <span className="text-sm text-[#111]">{DOC_LABELS[d.type] ?? d.type}</span>
-                        <span className="text-xs text-[#1d3557] font-semibold">Open PDF →</span>
-                      </a>
-                    ))}
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-bold text-[#111]">Submission Bundle</p>
+                    <button onClick={regenerate} disabled={regenerating}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-[#1d3557]/30 text-[#1d3557] font-semibold hover:bg-[#1d3557]/5 disabled:opacity-60">
+                      {regenerating ? "Generating…" : activeCase.documents.length > 0 ? "Regenerate bundle" : "Generate bundle"}
+                    </button>
                   </div>
-                  <p className="text-xs text-[#555] mt-3">Attach these to your SoundExchange submission (accounts@soundexchange.com or SXDirect).</p>
+                  {activeCase.documents.length > 0 ? (
+                    <>
+                      <div className="space-y-2">
+                        {activeCase.documents.map((d) => (
+                          <a key={d.id} href={d.storageUrl} target="_blank" rel="noreferrer"
+                            className="flex items-center justify-between px-4 py-3 bg-[#f2efe6] border border-black/10 rounded-lg hover:bg-[#ebe7da] transition">
+                            <span className="text-sm text-[#111]">{DOC_LABELS[d.type] ?? d.type}</span>
+                            <span className="text-xs text-[#1d3557] font-semibold">Open PDF →</span>
+                          </a>
+                        ))}
+                      </div>
+                      <p className="text-xs text-[#555] mt-3">Attach these to your SoundExchange submission (accounts@soundexchange.com or SXDirect).</p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-[#555]">Signed and sealed. Click &ldquo;Generate bundle&rdquo; to create the documents.</p>
+                  )}
                 </div>
               )}
             </>
