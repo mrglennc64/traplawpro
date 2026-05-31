@@ -254,15 +254,9 @@ export async function notifyOnSigned(caseRef: string) {
 
     const base = process.env.NEXT_PUBLIC_BASE_URL || "https://traplawpro.com";
 
-    // Attorney notification (only if the case is linked to an attorney w/ email).
-    if (c.attorney?.email) {
-      await sendMail({
-        to: c.attorney.email,
-        subject: `Handshake complete — ${c.caseRef} (${c.recordingTitle})`,
-        html: `<p>${signer?.legalName ?? "The artist"} has completed the Digital Handshake for <strong>${c.caseRef} — ${c.recordingTitle}</strong> (ISRC ${c.isrc}).</p><p>The authorization is sealed (SHA-256 ${signer?.hashAnchor ?? "—"}) and the document bundle has been generated. Open the case in your <a href="${base}/attorney-portal/handshake">attorney portal</a>.</p>`,
-        text: `${signer?.legalName ?? "The artist"} completed the Digital Handshake for ${c.caseRef} — ${c.recordingTitle}. The bundle is ready in your attorney portal.`,
-      });
-    }
+    // NOTE: We intentionally do NOT email the attorney. She is notified in-app
+    // via the auto-refreshing Cases list in the attorney portal. Only the artist
+    // receives an email (their own confirmation).
 
     // Artist confirmation (to the signer's own email).
     if (signer?.email) {
