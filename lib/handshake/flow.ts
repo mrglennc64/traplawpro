@@ -41,6 +41,7 @@ export interface StartCaseInput {
   rsrCredited?: string;
   artistEmail?: string;
   attorneyId?: string;
+  ownerRole?: string;
 }
 
 /** Create (or reset) an attorney case and mint an unguessable signing token. */
@@ -67,6 +68,7 @@ export async function startCaseHandshake(input: StartCaseInput) {
     rsrCredited: input.rsrCredited,
     artistEmail: input.artistEmail,
     attorneyId: input.attorneyId,
+    ownerRole: input.ownerRole,
     status: CASE_STATUS.PENDING,
   };
 
@@ -98,15 +100,24 @@ export async function captureIdentity(
   const caseRecord = await prisma.attorneyCase.findUnique({ where: { caseRef } });
   if (!caseRecord) throw new Error(`AttorneyCase ${caseRef} not found`);
 
-  const handshake = await prisma.attorneyHandshake.create({
-    data: {
-      caseId: caseRecord.id,
-      legalName: input.legalName,
-      stageName: input.stageName,
-      email: input.email,
-      biometricStatus: "pending",
-    },
+  // Reuse an existing un-signed handshake for this case (e.g. the signer
+  // reopened the link or went back to Identity) instead of spawning a duplicate
+  // "pending" record that would otherwise pollute the certificate.
+  const existing = await prisma.attorneyHandshake.findFirst({
+    where: { caseId: caseRecord.id, signedAt: null },
+    orderBy: { createdAt: "desc" },
   });
+
+  const data = {
+    legalName: input.legalName,
+    stageName: input.stageName,
+    email: input.email,
+    biometricStatus: "pending",
+  };
+
+  const handshake = existing
+    ? await prisma.attorneyHandshake.update({ where: { id: existing.id }, data })
+    : await prisma.attorneyHandshake.create({ data: { caseId: caseRecord.id, ...data } });
 
   return { handshakeId: handshake.id };
 }
@@ -241,13 +252,25 @@ export async function notifyOnSigned(caseRef: string) {
       },
     });
 
+    const base = process.env.NEXT_PUBLIC_BASE_URL || "https://traplawpro.com";
+
+    // Attorney notification (only if the case is linked to an attorney w/ email).
     if (c.attorney?.email) {
-      const base = process.env.NEXT_PUBLIC_BASE_URL || "https://traplawpro.com";
       await sendMail({
         to: c.attorney.email,
         subject: `Handshake complete — ${c.caseRef} (${c.recordingTitle})`,
         html: `<p>${signer?.legalName ?? "The artist"} has completed the Digital Handshake for <strong>${c.caseRef} — ${c.recordingTitle}</strong> (ISRC ${c.isrc}).</p><p>The authorization is sealed (SHA-256 ${signer?.hashAnchor ?? "—"}) and the document bundle has been generated. Open the case in your <a href="${base}/attorney-portal/handshake">attorney portal</a>.</p>`,
         text: `${signer?.legalName ?? "The artist"} completed the Digital Handshake for ${c.caseRef} — ${c.recordingTitle}. The bundle is ready in your attorney portal.`,
+      });
+    }
+
+    // Artist confirmation (to the signer's own email).
+    if (signer?.email) {
+      await sendMail({
+        to: signer.email,
+        subject: `Your authorization is complete — ${c.recordingTitle}`,
+        html: `<p>Thank you, ${signer.legalName}. Your authorization for <strong>${c.recordingTitle}</strong> (ISRC ${c.isrc}) is signed and sealed.</p><p>Tamper-evident seal (SHA-256): <code>${signer.hashAnchor ?? "—"}</code></p><p><a href="${base}/artist/cases/${c.signToken}">View your case status and documents</a>.</p>`,
+        text: `Your authorization for ${c.recordingTitle} is signed and sealed. Track it: ${base}/artist/cases/${c.signToken}`,
       });
     }
   } catch (e) {

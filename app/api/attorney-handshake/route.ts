@@ -1,16 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { isAttorneyUnlocked } from "@/lib/attorney-auth";
+import { attorneyRole } from "@/lib/attorney-auth";
 
 export const runtime = "nodejs";
 
-// Attorney-only: list all handshake cases so the attorney can open any one and
-// retrieve its bundle (answers "where do I pick up a signed case afterward?").
+// Lists handshake cases for the CURRENT login only — an attorney never sees an
+// admin's cases and vice versa (scoped by ownerRole).
 export async function GET() {
-  if (!isAttorneyUnlocked()) {
+  const role = attorneyRole();
+  if (!role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const cases = await prisma.attorneyCase.findMany({
+    where: { ownerRole: role },
     orderBy: { updatedAt: "desc" },
     include: {
       _count: { select: { documents: true } },

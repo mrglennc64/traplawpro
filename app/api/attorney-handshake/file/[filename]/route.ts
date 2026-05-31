@@ -1,20 +1,28 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { readDocument } from "@/lib/pdf";
-import { isAttorneyUnlocked } from "@/lib/attorney-auth";
+import { attorneyRole } from "@/lib/attorney-auth";
 
 export const runtime = "nodejs";
 
-// Attorney-only: stream a generated PDF from storage. The filename is produced
-// by saveDocument (e.g. lod-part1-TR-KW-005.pdf); basename() in readDocument
-// prevents path traversal.
+// Attorney-only PDF stream, scoped to the current login: the requested file
+// must belong to a Document on a case owned by this role.
 export async function GET(
   _req: Request,
   { params }: { params: { filename: string } }
 ) {
-  if (!isAttorneyUnlocked()) {
+  const role = attorneyRole();
+  if (!role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!params.filename.toLowerCase().endsWith(".pdf")) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const doc = await prisma.document.findFirst({
+    where: { storageUrl: { endsWith: `/${params.filename}` } },
+    include: { case: { select: { ownerRole: true } } },
+  });
+  if (!doc || doc.case.ownerRole !== role) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
   try {

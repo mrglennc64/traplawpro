@@ -8,3 +8,10 @@ import { cookies } from "next/headers";
 export function isAttorneyUnlocked(): boolean {
   return cookies().get("trp_attorney_unlocked")?.value === "1";
 }
+
+/** The unlocked login's role ('attorney' | 'admin'), or null if not unlocked. */
+export function attorneyRole(): "attorney" | "admin" | null {
+  if (!isAttorneyUnlocked()) return null;
+  const r = cookies().get("trp_attorney_role")?.value;
+  return r === "attorney" || r === "admin" ? r : "attorney";
+}

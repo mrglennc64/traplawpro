@@ -52,6 +52,10 @@ model AttorneyCase {
   rsrCommercialStatus String?
   rsrCredited         String?
 
+  // Which portal login owns this case ('attorney' | 'admin'). Cases are scoped
+  // to their creating login so an attorney never sees an admin's cases.
+  ownerRole        String?
+
   // --- Phase 2 (Artist Dashboard) forward-compat fields ---
   // Pipeline: handshake_pending -> artist_signed -> attorney_reviewing ->
   // bundle_generated -> submitted_soundexchange -> processing -> paid

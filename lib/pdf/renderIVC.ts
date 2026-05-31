@@ -13,7 +13,14 @@ export async function renderIVC(caseRecord: CaseLike): Promise<Uint8Array> {
   b.metaRow("Recording", caseRecord.recordingTitle);
   b.metaRow("ISRC", caseRecord.isrc);
 
-  for (const h of caseRecord.handshakes) {
+  // Only certify completed, signed authorizations — never half-finished
+  // ("pending") attempts.
+  const signed = caseRecord.handshakes.filter((h) => h.signedAt);
+  if (signed.length === 0) {
+    b.spacer(8);
+    b.paragraph("No completed authorization is on file for this case yet.", { italic: true });
+  }
+  for (const h of signed) {
     b.sectionHeading(`${h.legalName}${h.stageName ? ` (${h.stageName})` : ""}`);
     b.kvTable([
       { label: "Email", value: h.email },

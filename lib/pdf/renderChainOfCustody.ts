@@ -14,7 +14,12 @@ export async function renderChainOfCustody(
   b.metaRow("Case Reference", caseRecord.caseRef);
   b.metaRow("ISRC", caseRecord.isrc);
 
-  caseRecord.handshakes.forEach((h, i) => {
+  const signed = caseRecord.handshakes.filter((h) => h.signedAt);
+  if (signed.length === 0) {
+    b.spacer(8);
+    b.paragraph("No sealed signing events recorded yet.", { italic: true });
+  }
+  signed.forEach((h, i) => {
     b.sectionHeading(`Event ${i + 1} — ${h.legalName}`);
     b.kvTable([
       { label: "Biometric", value: h.biometricStatus },

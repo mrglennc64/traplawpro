@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { startCaseHandshake } from "@/lib/handshake/flow";
-import { isAttorneyUnlocked } from "@/lib/attorney-auth";
+import { attorneyRole } from "@/lib/attorney-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  if (!isAttorneyUnlocked()) {
+  const role = attorneyRole();
+  if (!role) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   try {
@@ -16,7 +18,18 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    // For an attorney login, auto-link the firm identity so her email
+    // (for notifications) populates automatically — she never types it.
+    let attorneyId: string | undefined = body.attorneyId;
+    if (role === "attorney" && !attorneyId) {
+      const atty =
+        (await prisma.attorney.findFirst({ where: { firm: "Funderburg Law" } })) ??
+        (await prisma.attorney.findFirst());
+      attorneyId = atty?.id;
+    }
     const result = await startCaseHandshake({
+      ownerRole: role,
+      attorneyId,
       caseRef: body.caseRef,
       isrc: body.isrc,
       recordingTitle: body.recordingTitle,
@@ -34,7 +47,6 @@ export async function POST(req: Request) {
       rsrCommercialStatus: body.rsrCommercialStatus,
       rsrCredited: body.rsrCredited,
       artistEmail: body.artistEmail,
-      attorneyId: body.attorneyId,
     });
     return NextResponse.json({ success: true, ...result });
   } catch (err) {
