@@ -392,7 +392,7 @@ export default function AttorneyPortal() {
             <div>
               <h1 className="text-3xl font-bold text-[#111] mb-2">Digital Handshake</h1>
               <p className="text-[#555] mb-6">Collect legally valid, biometrically-verified artist authorization — court-admissible and SoundExchange-ready.</p>
-              <div className="max-w-3xl">
+              <div className="grid lg:grid-cols-2 gap-6 max-w-5xl items-start">
                 <div className="bg-white border border-black/10 rounded-2xl p-8">
                   <div className="flex items-start gap-4">
                     <div className="h-12 w-12 rounded-xl bg-[#1d3557]/10 text-[#1d3557] flex items-center justify-center flex-shrink-0">
@@ -414,6 +414,28 @@ export default function AttorneyPortal() {
                       </button>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-[#f2efe6] border border-black/10 rounded-2xl p-8">
+                  <h3 className="text-xl font-bold text-[#111] mb-4">How it works</h3>
+                  <ol className="space-y-4">
+                    {[
+                      { t: 'Start a case', d: 'Enter the recording, ISRC, performer and share. A unique one-tap signing link is generated for the artist.' },
+                      { t: 'Send the link', d: 'Copy the link or share the QR code with the artist or their manager — text, email, or DM. No app or account needed.' },
+                      { t: 'Artist signs', d: 'They confirm identity, verify with device biometrics (Face ID / fingerprint), and sign. The status updates here live.' },
+                      { t: 'Bundle auto-generates', d: 'The moment they sign, the 6 SoundExchange documents are created and sealed with a tamper-evident SHA-256 hash.' },
+                      { t: 'Download & file', d: 'Open the case under “Cases / Chain of Custody,” download the bundle, and submit to SoundExchange (accounts@soundexchange.com or SXDirect).' },
+                    ].map((s, i) => (
+                      <li key={i} className="flex gap-3">
+                        <span className="h-6 w-6 flex-shrink-0 rounded-full bg-[#1d3557] text-white text-xs font-bold flex items-center justify-center">{i + 1}</span>
+                        <div>
+                          <p className="text-sm font-semibold text-[#111]">{s.t}</p>
+                          <p className="text-xs text-[#555] mt-0.5">{s.d}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="text-xs text-[#555] mt-5 pt-4 border-t border-black/10">The artist is emailed a confirmation and can track their case anytime. You are never required to email the artist — the case appears in your portal automatically.</p>
                 </div>
               </div>
             </div>
