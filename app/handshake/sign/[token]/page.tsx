@@ -257,10 +257,17 @@ export default function SignerPage({ params }: { params: { token: string } }) {
       {step === "sign" && (
         <div className="space-y-4">
           {bioNote && <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">{bioNote}</p>}
-          <p className="text-sm text-[#555]">
-            By signing, I authorize the filing of a featured-performer royalty claim and Letter of
-            Direction for the recording above under 17 U.S.C. §114.
-          </p>
+          <div className="border-t border-black/10 pt-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#111] mb-2">Authorization</p>
+            <p className="text-sm text-[#555]">
+              By signing, I authorize the filing of a featured-performer royalty claim and Letter of
+              Direction for the recording above under 17 U.S.C. §114.
+            </p>
+            <p className="text-sm text-[#555] mt-2">
+              I also authorize TrapRoyalties Pro and its partnered entertainment attorneys to prepare
+              and file the necessary SoundExchange claim documents on my behalf.
+            </p>
+          </div>
           <SignaturePad onChange={setSignature} />
           <button onClick={submitSignature} disabled={busy || !signature} className="w-full py-4 bg-[#1d3557] text-white rounded-lg font-medium hover:bg-[#122947] transition disabled:opacity-60">
             {busy ? "Sealing authorization…" : "Sign & Authorize"}
