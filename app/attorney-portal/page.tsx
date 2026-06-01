@@ -422,7 +422,7 @@ export default function AttorneyPortal() {
                     {[
                       { t: 'Start a case', d: 'Enter the recording, ISRC, performer and share. A unique one-tap signing link is generated for the artist.' },
                       { t: 'Send the link', d: 'Copy the link or share the QR code with the artist or their manager — text, email, or DM. No app or account needed.' },
-                      { t: 'Artist signs', d: 'They confirm identity, verify with device biometrics (Face ID / fingerprint), and sign. The status updates here live.' },
+                      { t: 'Artist signs', d: 'They confirm identity, verify with device biometrics (Face ID / fingerprint), and sign. The case updates automatically in your Cases workspace — no refresh needed.' },
                       { t: 'Bundle auto-generates', d: 'The moment they sign, the 6 SoundExchange documents are created and sealed with a tamper-evident SHA-256 hash.' },
                       { t: 'Download & file', d: 'Open the case under “Cases / Chain of Custody,” download the bundle, and submit to SoundExchange (accounts@soundexchange.com or SXDirect).' },
                     ].map((s, i) => (
@@ -435,7 +435,7 @@ export default function AttorneyPortal() {
                       </li>
                     ))}
                   </ol>
-                  <p className="text-xs text-[#555] mt-5 pt-4 border-t border-black/10">The artist is emailed a confirmation and can track their case anytime. You are never required to email the artist — the case appears in your portal automatically.</p>
+                  <p className="text-xs text-[#555] mt-5 pt-4 border-t border-black/10">The artist receives a confirmation email and can track their own case. You track every case from the Cases workspace — it refreshes automatically, with no email back-and-forth.</p>
                 </div>
               </div>
             </div>
