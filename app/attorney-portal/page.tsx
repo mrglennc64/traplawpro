@@ -181,6 +181,43 @@ export default function AttorneyPortal() {
   const [splitPayAmount, setSplitPayAmount] = useState<number>(50000);
   const matter = MATTERS.find(m => m.id === selectedMatter) || MATTERS[0];
 
+  // --- Secure admin<->attorney messaging ---
+  const [msgs, setMsgs] = useState<{ id: string; sender: string; body: string; createdAt: string; mine: boolean }[]>([]);
+  const [msgInput, setMsgInput] = useState('');
+  const [msgSending, setMsgSending] = useState(false);
+  const [msgUnread, setMsgUnread] = useState(0);
+
+  const loadUnread = async () => {
+    try { const r = await fetch('/api/messages/unread'); if (r.ok) { const d = await r.json(); setMsgUnread(d.unread || 0); } } catch {}
+  };
+  const loadMessages = async () => {
+    try { const r = await fetch('/api/messages'); if (r.ok) { const d = await r.json(); setMsgs(d.messages || []); setMsgUnread(0); } } catch {}
+  };
+  const sendMessage = async () => {
+    const text = msgInput.trim(); if (!text) return;
+    setMsgSending(true);
+    try {
+      const r = await fetch('/api/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body: text }) });
+      if (r.ok) { setMsgInput(''); await loadMessages(); }
+    } finally { setMsgSending(false); }
+  };
+
+  // Poll the unread count for the sidebar badge while unlocked.
+  useEffect(() => {
+    if (!unlocked) { setMsgUnread(0); return; }
+    loadUnread();
+    const t = setInterval(loadUnread, 12000);
+    return () => clearInterval(t);
+  }, [unlocked]);
+
+  // While the messages section is open, load + poll the thread (GET marks read).
+  useEffect(() => {
+    if (!unlocked || activeSection !== 'secure-message') return;
+    loadMessages();
+    const t = setInterval(loadMessages, 5000);
+    return () => clearInterval(t);
+  }, [unlocked, activeSection]);
+
   const runScan = () => {
     setScanRunning(true);
     setScanComplete(false);
@@ -217,7 +254,7 @@ export default function AttorneyPortal() {
       { id: 'filing-instructions', label: 'Filing Instructions', icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" },
     ]},
     { label: "Communication", items: [
-      { id: 'secure-message', label: 'Secure Client Message', icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", badge: "2" },
+      { id: 'secure-message', label: 'Secure Messages', icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", badge: msgUnread > 0 ? String(msgUnread) : undefined },
     ]},
   ];
 
@@ -435,7 +472,7 @@ export default function AttorneyPortal() {
                       </li>
                     ))}
                   </ol>
-                  <p className="text-xs text-[#555] mt-5 pt-4 border-t border-black/10">The artist receives a confirmation email and can track their own case. You track every case from the Cases workspace — it refreshes automatically, with no email back-and-forth.</p>
+                  <p className="text-xs text-[#555] mt-5 pt-4 border-t border-black/10">The artist is emailed a confirmation and can track their case anytime. The artist never emails you back. The case appears in your portal automatically.</p>
                 </div>
               </div>
             </div>
@@ -1140,21 +1177,32 @@ export default function AttorneyPortal() {
 
           {activeSection === 'secure-message' && (
             <div>
-              <h1 className="text-3xl font-bold text-[#111] mb-2">Secure Client Message</h1>
-              <p className="text-[#555] mb-8">End-to-end encrypted</p>
-              <div className="bg-white border border-black/10 rounded-xl p-6 h-[600px] flex flex-col">
+              <h1 className="text-3xl font-bold text-[#111] mb-2">Secure Messages</h1>
+              <p className="text-[#555] mb-8">Private channel between {unlockRole === 'attorney' ? 'you and the case admin (Carters Consultants)' : 'you and the attorney (Funderburg Law)'}.</p>
+              <div className="bg-white border border-black/10 rounded-xl p-6 h-[600px] flex flex-col max-w-3xl">
                 <div className="flex items-center space-x-4 mb-6 pb-4 border-b border-black/10">
-                  <div className="w-12 h-12 bg-[#1d3557] rounded-full flex items-center justify-center text-white font-bold">L</div>
-                  <div><p className="font-bold">{matter.name}</p><p className="text-sm text-[#555]">Online - End-to-End Encrypted</p></div>
+                  <div className="w-12 h-12 bg-[#1d3557] rounded-full flex items-center justify-center text-white font-bold">{unlockRole === 'attorney' ? 'A' : 'L'}</div>
+                  <div>
+                    <p className="font-bold">{unlockRole === 'attorney' ? 'Carters Consultants (Admin)' : 'Funderburg Law (Attorney)'}</p>
+                    <p className="text-sm text-[#555]">Secure internal channel · auto-refreshing</p>
+                  </div>
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-                  <div className="flex justify-end"><div className="bg-[#1d3557] text-white p-4 rounded-2xl max-w-lg"><p>Ready to send demand letter?</p></div></div>
-                  <div className="flex justify-start"><div className="bg-[#f2efe6] p-4 rounded-2xl max-w-lg"><p>Lets move forward. Can we add merch gap?</p></div></div>
+                <div className="flex-1 overflow-y-auto space-y-3 mb-4">
+                  {msgs.length === 0 ? (
+                    <p className="text-sm text-[#999] text-center mt-8">No messages yet. Start the conversation below.</p>
+                  ) : msgs.map(m => (
+                    <div key={m.id} className={`flex ${m.mine ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`p-3 rounded-2xl max-w-lg ${m.mine ? 'bg-[#1d3557] text-white' : 'bg-[#f2efe6] text-[#111]'}`}>
+                        <p className="whitespace-pre-wrap break-words">{m.body}</p>
+                        <p className={`text-[10px] mt-1 ${m.mine ? 'text-white/60' : 'text-[#999]'}`}>{new Date(m.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex gap-4">
-                  <input type="text" placeholder="Type your message..." className="flex-1 px-4 py-3 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1d3557]"/>
-                  <button className="px-6 py-3 bg-[#1d3557] text-white rounded-lg font-medium hover:bg-[#122947] transition">Send</button>
-                </div>
+                <form onSubmit={(e) => { e.preventDefault(); sendMessage(); }} className="flex gap-4">
+                  <input type="text" value={msgInput} onChange={e => setMsgInput(e.target.value)} placeholder="Type your message..." className="flex-1 px-4 py-3 border border-black/10 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1d3557]"/>
+                  <button type="submit" disabled={msgSending || !msgInput.trim()} className="px-6 py-3 bg-[#1d3557] text-white rounded-lg font-medium hover:bg-[#122947] transition disabled:opacity-60">{msgSending ? 'Sending…' : 'Send'}</button>
+                </form>
               </div>
             </div>
           )}

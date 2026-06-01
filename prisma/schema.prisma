@@ -112,6 +112,17 @@ model ArtistNotification {
   createdAt DateTime     @default(now())
 }
 
+// Secure internal messaging between the admin and attorney logins. A single
+// shared 1:1 channel (not case-linked). `readAt` is set when the recipient
+// (the side that didn't send) opens the thread.
+model DirectMessage {
+  id        String    @id @default(cuid())
+  sender    String // 'admin' | 'attorney'
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
 // Passwordless magic-link sessions for the artist dashboard.
 model ArtistAuthToken {
   id         String    @id @default(cuid())
