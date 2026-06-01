@@ -601,25 +601,6 @@ export default function AttorneyPortal() {
                 </div>
               </div>
 
-              {/* Quick actions */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {[
-                  { id:'run-due-diligence', icon:"🔬", l:"Forensic Audit", d:"Full catalog scan — ASCAP, BMI, SoundExchange" },
-                  { id:'generate-court-report', icon:"📋", l:"Court-Ready Report", d:"Hash-sealed, QR-verified PDF evidence package" },
-                  { id:'digital-handshake', icon:"🤝", l:"Digital Handshake", d:"Verified and documented split agreement" },
-                ].map(a => (
-                  <button key={a.id} onClick={requireUnlock(() => setActiveSection(a.id))}
-                    className="flex items-center gap-4 p-5 bg-white border border-black/10 rounded-xl hover:border-[#1d3557]/50 hover:bg-black/5 transition text-left group">
-                    <span className="text-3xl">{a.icon}</span>
-                    <div>
-                      <p className="font-black text-sm">{a.l}</p>
-                      <p className="text-xs text-[#555] mt-0.5">{a.d}</p>
-                    </div>
-                    <span className="ml-auto text-[#555] group-hover:text-[#1d3557] transition font-black">→</span>
-                  </button>
-                ))}
-              </div>
-
               {unlockRole === 'attorney' && (
                 <div className="mt-8 p-4 bg-[#f2efe6] border border-black/10 rounded-xl">
                   <p className="text-[10px] mc-mono uppercase tracking-widest text-[#555] mb-2">Methodology &amp; Disclaimer</p>
